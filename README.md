@@ -111,7 +111,7 @@ logging_enabled: true
 logging_purge_confs: true
 ```
 
-2) Deploying basic LSR/Logging config files in /etc/rsyslog.d, which handle inputs from the local system and outputs into the local files, which actions are predefined.
+2) Deploying basic LSR/Logging config files in /etc/rsyslog.d, which handle inputs from the local system (e.g. systemd journald), and outputs into local files (e.g. /var/log/messages).
 ```
 logging_enabled: true
 logging_purge_confs: true
@@ -126,7 +126,7 @@ logging_flows:
     inputs: [system-input]
     outputs: [local-files]
 ```
-The local files `type files` is a special output.  The predefined file type `logging_outputs` and specifying the logging_flows could be skippable.  So, the following configuration is the same as above.
+If inputs are specified, but no flows or outputs are specified, the default is to write the input to the predefined system log files e.g. /var/log/messages.
 ```
 logging_enabled: true
 logging_purge_confs: true
@@ -221,12 +221,12 @@ Variables in vars.yml
    -  ** `type: files`**
       - `facility`: facility; default to `*`
       - `severity`: severity; default to `*`
-	  - `exclude`: exclude; default to none.
-	  - `path`: path to the output file.  Must have.  If `path` is not defined, the files instance is dropped.
-	  These values are used in the omfile action as follows:
-	  ```
-	  facility.severity;exclude path
-	  ```
+      - `exclude`: exclude; default to none.
+      - `path`: path to the output file.  Must have.  If `path` is not defined, the files instance is dropped.
+      These values are used in the omfile action as follows:
+      ```
+      facility.severity;exclude path
+      ```
    -  ** `type: forwards`**
       - `facility`: facility; default to `*`
       - `severity`: severity; default to `*`
@@ -325,21 +325,20 @@ can test against a different image/tag like so:
 CI tests
 ========
 In the tests directory, currently the following test scripts are available.
-tests_combination.yml	 tests_default.yml		tests_files_files.yml		   tests_files.yml
-tests_combination2.yml	 tests_enabled.yml		tests_files_forwards_implicit.yml  tests_forwards.yml
-tests_default_files.yml  tests_files_elasticsearch.yml	tests_files_forwards.yml	   tests_listen.yml
+tests_combination.yml    tests_default.yml              tests_files_files.yml              tests_files.yml
+tests_combination2.yml   tests_enabled.yml              tests_files_forwards_implicit.yml  tests_forwards.yml
+tests_default_files.yml  tests_files_elasticsearch.yml  tests_files_forwards.yml           tests_listen.yml
 
 To run them manually,
 1. Download CentOS qcow2 image from https://cloud.centos.org/centos/.
-2. Run the following command, which spawns an openshift node locally and runs the test yml on it.
+2. Run the following command from the top `logging` directory, which spawns an openshift node locally and runs the test yml on it.
    ```
-   cd tests
-   TEST_SUBJECTS=/path/to/downloaded_your_CentOS_7_or_8_image.qcow2 ansible-playbook [-vvvv] -i /usr/share/ansible/inventory/standard-inventory-qcow2 tests_something.yml
+   TEST_SUBJECTS=/path/to/downloaded_your_CentOS_7_or_8_image.qcow2 ansible-playbook [-vvvv] -i /usr/share/ansible/inventory/standard-inventory-qcow2 tests/tests_something.yml
    ```
 3. To debug it, add `TEST_DEBUG=true` prior to `ansible-playbook`.
 4. Then, you could ssh to the node as follows:
    ```
-   ssh -p PID -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /tmp/inventory-cloudqvv68qge/identity root@127.0.0.3
+   ssh -p PID -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i /tmp/inventory-cloudRANDOMSTR/identity root@127.0.0.3
    ```
    The PID is returned from the following command line.
    ```
