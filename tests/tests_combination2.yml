@@ -59,7 +59,7 @@
             outputs: [forwards_severity_and_facility]
           - name: flow_3
             inputs: [basic_input]
-            outputs: [forwards_severity_and_facility]
+            outputs: [forwards_facility_only]
       include_role:
         name: linux-system-roles.logging
 

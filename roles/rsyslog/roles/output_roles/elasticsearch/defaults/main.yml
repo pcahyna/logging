@@ -110,14 +110,17 @@ __rsyslog_conf_es_elasticsearch:
                       writeoperation="{{ res.writeoperation | d("create") }}"
                       bulkid="{{ res.bulkid | d("id_template") }}"
                       dynbulkid="{{ res.dynbulkid | d('on') }}"
-                      retryfailures="{{ res.retryfailures | d('on') }}"
                       allowUnsignedCerts="{{ res.allowUnsignedCerts | d("off") }}"
-          {% if res.retryfailures | d("on") == "on" %}
-          {% if res.retryruleset | d() | length > 0 %}
+          {% if not res.retryfailures | d(true) %}
+          {%   if res.retryruleset | d() | length > 0 %}
+                      retryfailures="on"
                       retryruleset="{{ res.retryruleset }}"
-          {% else %}
+          {%   else %}
+                      retryfailures="on"
                       retryruleset="{{ res.name }}"
-          {% endif %}
+          {%   endif %}
+          {% else %}
+                      retryfailures="off"
           {% endif %}
                       usehttps="{{ res.usehttps | default("on") }}"
           {% if use_omelasticsearch_cert | default(true) %}

@@ -191,11 +191,6 @@ rsyslog_tcp_tls_port: '6514'
 rsyslog_output_files: []
 rsyslog_output_forwards: []
 
-rsyslog_flows: []
-
-rsyslog_input_basics: []
-rsyslog_input_files: []
-
 # Rsyslog configuration rules
 # ---------------------------
 

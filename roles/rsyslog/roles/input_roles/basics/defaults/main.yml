@@ -27,8 +27,6 @@ __rsyslog_basics_rules:
   - '{{ __rsyslog_conf_system_input }}'
   - '{{ __rsyslog_conf_network_input }}'
 
-__basics_first_time: true
-
 # __rsyslog_conf_local_basics_modules
 #
 # List of ``rsyslogd`` modules that enable logs from the local system to be
@@ -56,35 +54,61 @@ __rsyslog_conf_local_basics_modules:
                  SysSock.Use="off") # Turn off message reception via local log socket.
           {% endif %}
           # Read from journald
+          {% set done = "false" %}
+          {% for input in logging_inputs %}
+          {%   if done == "false" and input.type == "basics" %}
           module(load="imjournal"
                  StateFile="{{ rsyslog_work_dir }}/imjournal.state"
-                 RateLimit.Burst="{{ rsyslog_input_basics.0.rsyslog_imjournal_ratelimit_burst | d(20000) }}"
-                 RateLimit.Interval="{{ rsyslog_input_basics.0.rsyslog_imjournal_ratelimit_interval | d(600) }}"
-                 PersistStateInterval="{{ rsyslog_input_basics.0.rsyslog_imjournal_persist_state_interval | d(10) }}")
-          {% if rsyslog_flows | length > 0 %}
+                 RateLimit.Burst="{{ input.rsyslog_imjournal_ratelimit_burst | d(20000) }}"
+                 RateLimit.Interval="{{ input.rsyslog_imjournal_ratelimit_interval | d(600) }}"
+                 PersistStateInterval="{{ input.rsyslog_imjournal_persist_state_interval | d(10) }}")
+          {%     set done = "true" %}
+          {%   endif %}
+          {% endfor %}
+          {% set ns = namespace(files_output = false) %}
+          {% set rsyslog_outputs = logging_outputs | d([]) %}
+          {% for output in rsyslog_outputs %}
+          {%   if output.type == "files" %}
+          {%     set ns.files_output = true %}
+          {%   endif %}
+          {% endfor %}
+          {% if not ns.files_output %}
+          {%   set rsyslog_outputs = rsyslog_outputs + [{"name": "files", "type": "files"}] %}
+          {% endif %}
+          {% set indict = {} %}
+          {% set input_list = [] %}
+          {% for input in logging_inputs %}
+          {%   set _ = indict.__setitem__(input.name, input) %}
+          {%   if input.type == "basics" %}
+          {%     set input_list = input_list.append( input.name ) %}
+          {%   endif %}
+          {% endfor %}
+          {% set rsyslog_flows = logging_flows | d([ {"name": "default_flow", "inputs": input_list, "outputs": ["files"]} ]) %}
+          {% set outdict = {} %}
           {% for flow in rsyslog_flows %}
-          {% for input_name in flow.inputs %}
-          {% if rsyslog_input_basics.0.name == input_name %}
-          {% if __basics_first_time == true %}
-          if $inputname == "imjournal" then {
-          {% endif %}
-          {% for flow_output in flow.outputs %}
-            call {{ flow_output }}
+          {%   for oname in flow.outputs %}
+          {%     set _ = outdict.__setitem__(oname, outdict.get(oname,[])|union(flow.inputs)) %}
+          {%   endfor %}
           {% endfor %}
-          {% if __basics_first_time == true %}
-            stop
+          {% for output in rsyslog_outputs %}
+          {%   if outdict[output.name] | d(false) %}
+          if
+          {%     for inputname in outdict[output.name] %}
+          {%       if not loop.first %}
+            or
+          {%       endif %}
+          {%       set input = indict[inputname] %}
+          {%       if input.type == "basics" %}
+            ($inputname == "imjournal")
+          {%       elif input.type == "files" %}
+            ($syslogtag == "{{ input.name }}")
+          {%       endif %}
+          {%     endfor %}
+            then {
+              call {{ output.name }}
           }
-          {% set __basics_first_time = false %}
-          {% endif %}
-          {% endif %}
+          {%   endif %}
           {% endfor %}
-          {% endfor %}
-          {% else %}
-          if $inputname == "imjournal" then {
-            call files
-            stop
-          }
-          {% endif %}
 
   - name: 'remote-modules'
     type: 'modules'

@@ -13,8 +13,6 @@ __rsyslog_files_input_packages: []
 
 rsyslog_input_log_path: "/var/log/containers/*.log"
 
-__files_first_time: true
-
 # __rsyslog_files_input_rules
 #
 # List of YAML dictionaries, each dictionary should contain ``rsyslogd`` configuration
@@ -48,27 +46,52 @@ __rsyslog_conf_imfile_inputs:
 
       - comment: 'Log messages from log files'
         options: |-
-          {% for element in rsyslog_input_files %}
-          input(type="imfile" file="{{ element.rsyslog_input_log_path | d(rsyslog_input_log_path) }}" tag="{{ element.name }}")
-          {% set __files_first_time = true %}
+          {% for input in logging_inputs %}
+          {%   if input.type == "files" %}
+          input(type="imfile" file="{{ input.rsyslog_input_log_path | d(rsyslog_input_log_path) }}" tag="{{ input.name }}")
+          {%   endif %}
+          {% endfor %}
+          {% set ns = namespace(files_output = false) %}
+          {% set rsyslog_outputs = logging_outputs | d([]) %}
+          {% for output in rsyslog_outputs %}
+          {%   if output.type == "files" %}
+          {%     set ns.files_output = true %}
+          {%   endif %}
+          {% endfor %}
+          {% if not ns.files_output %}
+          {%   set rsyslog_outputs = rsyslog_outputs + [{"name": "files", "type": "files"}] %}
+          {% endif %}
+          {% set indict = {} %}
+          {% set input_list = [] %}
+          {% for input in logging_inputs %}
+          {%   set _ = indict.__setitem__(input.name, input) %}
+          {%   if input.type == "files" %}
+          {%     set input_list = input_list.append( input.name ) %}
+          {%   endif %}
+          {% endfor %}
+          {% set rsyslog_flows = logging_flows | d([ {"name": "default_flow", "inputs": input_list, "outputs": ["files"]} ]) %}
+          {% set outdict = {} %}
           {% for flow in rsyslog_flows %}
-          {% for input_name in flow.inputs %}
-          {% if element.name == input_name %}
-          {% if __files_first_time == true %}
-          if $syslogtag == "{{ element.name }}" then {
-          {% endif %}
-          {% for flow_output in flow.outputs %}
-          {% if flow_output.startswith("elasticsearch") %}
-            # FIXME: Need to normalize a log before passing it to elasticsearch output
-          {% endif %}
-            call {{ flow_output }}
+          {%   for oname in flow.outputs %}
+          {%     set _ = outdict.__setitem__(oname, outdict.get(oname,[])|union(flow.inputs)) %}
+          {%   endfor %}
           {% endfor %}
-          {% if __files_first_time == true %}
-            stop
+          {% for output in rsyslog_outputs %}
+          {%   if outdict[output.name] | d(false) %}
+          if
+          {%     for inputname in outdict[output.name] %}
+          {%       if not loop.first %}
+            or
+          {%       endif %}
+          {%       set input = indict[inputname] %}
+          {%       if input.type == "basics" %}
+            ($inputname == "imjournal")
+          {%       elif input.type == "files" %}
+            ($syslogtag == "{{ input.name }}")
+          {%       endif %}
+          {%     endfor %}
+            then {
+              call {{ output.name }}
           }
-          {% set __files_first_time = false %}
-          {% endif %}
-          {% endif %}
-          {% endfor %}
-          {% endfor %}
+          {%   endif %}
           {% endfor %}

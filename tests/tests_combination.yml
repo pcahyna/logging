@@ -50,7 +50,7 @@
         logging_flows:
           - name: flow_0
             inputs: [basic_input]
-            outputs: [files_test0, files_test1, forwards_severity_and_facility, forwards_severity_and_facility]
+            outputs: [files_test0, files_test1, forwards_severity_and_facility, forwards_facility_only]
           - name: flow_1
             inputs: ["{{ __test_tag }}"]
             outputs: [files_test0, files_test1]
