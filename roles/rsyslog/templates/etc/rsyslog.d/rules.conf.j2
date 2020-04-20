@@ -27,9 +27,7 @@
 {%   endif %}
 {% endmacro %}
 {% if item.sections | d() %}
-{%   for section in item.sections %}
-{{ print_config(section) -}}
-{%   endfor %}
+{{ print_config(item.sections) -}}
 {% else %}
 {{ print_config(item) -}}
 {% endif %}

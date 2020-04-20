@@ -1,9 +1,43 @@
 ---
+- debug:
+    msg: "DEBUG output files before deploy - {{ item }}"
+  loop: "{{ lookup('subelements', __rsyslog_files_output_rules | flatten, 'sections', {'skip_missing': true}) }}"
+  when:
+    - '"### END ###" in item.1.options | d()'
+
+- name: Get objects having a delimiter
+  set_fact:
+    __rsyslog_test: [{'name': '{{ item.0.name }}', 'type': '{{ item.0.type }}', 'sections': ['{{ item.1 }}']}]
+  loop: "{{ lookup('subelements', __rsyslog_files_output_rules | flatten, 'sections', {'skip_missing': true}) }}"
+  when:
+    - '"### END ###" in item.1.options | d()'
+
+- name: initialize
+  set_fact:
+    __rsyslog_test2: []
+
+- name: add the select.options of the __rsyslog_files_output_rules without the delimiter
+  set_fact:
+    __rsyslog_test2: "{{ __rsyslog_test2 }} + {{ [ item ] }}"
+  loop: "{{ lookup('subelements', __rsyslog_files_output_rules | flatten, 'sections', {'skip_missing': true}) }}"
+  when:
+    - 'not "### END ###" in item.1.options | d()'
+
+- name: split sections.options with the delimiter
+  set_fact:
+    __rsyslog_test2: "{{ __rsyslog_test2 }} + {{ [[ {'name': '{{ __rsyslog_test.0.name +  index | string }}', 'type': '{{ __rsyslog_test.0.type }}', 'sections': [{'options': item }]} ]] }}"
+  loop_control:
+    index_var: index
+  loop: "{{ __rsyslog_test.0.sections.0.options.split('### END ###') }}"
+
+- debug:
+    msg: "DEBUG 3 {{ __rsyslog_test2 }}"
+
 # Deploy configuration files
 - name: Install/Update role packages and generate role configuration files for output to local files
   vars:
     __rsyslog_packages: "{{ __rsyslog_files_output_packages }}"
-    __rsyslog_rules: "{{ __rsyslog_files_output_rules }}"
+    __rsyslog_rules: "{{ __rsyslog_test2 }}"
   include_role:
     name: "{{ role_path | dirname | dirname | dirname }}"
     tasks_from: deploy.yml

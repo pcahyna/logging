@@ -38,7 +38,7 @@ rsyslog_conf_local_ovirt_modules:
 
 rsyslog_conf_ovirt_main_modules:
 
-  - name: 'ovirt_main'
+  - name: 'ovirt_main_0'
     type: 'modules'
     sections:
 
@@ -46,13 +46,25 @@ rsyslog_conf_ovirt_main_modules:
           # Read from file with inotify enabled
           module(load="imfile" mode="inotify")
 
+  - name: 'ovirt_main_1'
+    type: 'modules'
+    sections:
+
       - options: |-
           # Read from tcp collectd metrics
           module(load="imtcp")
 
+  - name: 'ovirt_main_2'
+    type: 'modules'
+    sections:
+
       - options: |-
           # Normalize logs
           module(load="mmnormalize")
+
+  - name: 'ovirt_main_3'
+    type: 'modules'
+    sections:
 
       - options: |-
           # Parse logs to JSON

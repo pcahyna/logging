@@ -23,7 +23,6 @@ rsyslog_input_log_path: "/var/log/containers/*.log"
 # in a special format. This list specifies ``rsyslogd`` basic input configuration.
 __rsyslog_basics_rules:
   - '{{ __rsyslog_conf_local_basics_modules }}'
-  - '{{ __rsyslog_conf_default_rulesets }}'
   - '{{ __rsyslog_conf_system_input }}'
   - '{{ __rsyslog_conf_network_input }}'
 
@@ -33,16 +32,20 @@ __rsyslog_basics_rules:
 # received and parsed by the ``rsyslogd`` daemon.
 __rsyslog_conf_local_basics_modules:
 
-  - name: 'basics-modules'
+  - name: 'basics-kernel-modules'
     type: 'modules'
+    state: '{{ "present"
+               if ("kernel-message" in rsyslog_capabilities)
+               else "absent" }}'
     sections:
 
       - comment: 'Reads kernel messages (the same are read from journald)'
         options: |-
           module(load="imklog" permitnonkernelfacility="on")
-        state: '{{ "present"
-                  if ("kernel-message" in rsyslog_capabilities)
-                  else "absent" }}'
+
+  - name: 'basics-system-modules'
+    type: 'modules'
+    sections:
 
       - comment: 'System log messages'
         options: |-
@@ -104,14 +107,18 @@ __rsyslog_conf_local_basics_modules:
 
   - name: 'remote-modules'
     type: 'modules'
-    state: '{{ "present" if "network" in rsyslog_capabilities else "absent" }}'
+    state: '{{ "present" if "network" in rsyslog_capabilities and not rsyslog_send_over_tls_only else "absent" }}'
     sections:
 
       - comment: 'Read messages sent over UDP or plain TCP without TLS'
         options: |-
           module(load="imudp")
           module(load="imptcp")
-        state: '{{ "present" if not rsyslog_send_over_tls_only else "absent" }}'
+
+  - name: 'remote-tls-modules'
+    type: 'modules'
+    state: '{{ "present" if "network" in rsyslog_capabilities and "tls" in rsyslog_capabilities else "absent" }}'
+    sections:
 
       - comment: 'Read messages sent over Secure TCP with TLS'
         options: |-
@@ -128,7 +135,6 @@ __rsyslog_conf_local_basics_modules:
             {% endif %}
           {% endif %}
           )
-        state: '{{ "present" if "tls" in rsyslog_capabilities else "absent" }}'
 
 # __rsyslog_conf_system_input
 #
@@ -152,7 +158,8 @@ __rsyslog_conf_network_input:
   - name: 'network-input'
     type: 'input'
     state: '{{ "present"
-              if ("network" in rsyslog_capabilities)
+              if ("network" in rsyslog_capabilities) and
+                 (not rsyslog_send_over_tls_only)
               else "absent" }}'
     sections:
 
@@ -171,10 +178,14 @@ __rsyslog_conf_network_input:
             port="{{ rsyslog_tcp_port }}"
             ruleset="remote"
           )
-        state: '{{ "present"
-                  if (not rsyslog_send_over_tls_only)
-                  else "absent" }}'
 
+  - name: 'network-tls-input'
+    type: 'input'
+    state: '{{ "present"
+              if ("network" in rsyslog_capabilities) and
+                 ("tls" in rsyslog_capabilities)
+              else "absent" }}'
+    sections:
       - comment: 'Log messages from remote hosts over TLS'
         options: |-
           input(
@@ -183,6 +194,3 @@ __rsyslog_conf_network_input:
             port="{{ rsyslog_tcp_tls_port }}"
             ruleset="remote"
           )
-        state: '{{ "present"
-                  if ("tls" in rsyslog_capabilities)
-                  else "absent" }}'

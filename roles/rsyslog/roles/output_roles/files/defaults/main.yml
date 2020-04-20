@@ -38,17 +38,23 @@ __rsyslog_conf_files_output_rules:
 
       - options: |-
           {% if rsyslog_output_files | d([]) and rsyslog_output_files.0.path | d() %}
-          {% for element in rsyslog_output_files %}
-          {% if element.exclude is defined %}
+          {%   for element in rsyslog_output_files %}
+          {%     if element.exclude is defined %}
           ruleset(name="{{ element.name }}") {
             {{ element.facility | d('*') }}.{{ element.severity | d('*') }};{{ element.exclude }} {{ element.path }}
           }
-          {% else %}
+          {%       if not loop.last %}
+          ### END ###
+          {%       endif %}
+          {%     else %}
           ruleset(name="{{ element.name }}") {
             {{ element.facility | d('*') }}.{{ element.severity | d('*') }} {{ element.path }}
           }
-          {% endif %}
-          {% endfor %}
+          {%       if not loop.last %}
+          ### END ###
+          {%       endif %}
+          {%     endif %}
+          {%   endfor %}
           {% else %}
           ruleset(name="files") {
               # Log all kernel messages to the console.

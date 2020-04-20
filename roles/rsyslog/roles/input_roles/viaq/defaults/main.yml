@@ -25,9 +25,6 @@ __rsyslog_conf_viaq_main_modules:
       - options: |-
           # Read from file with inotify enabled
           module(load="imfile" mode="inotify")
-
-      - options: |-
-          # Normalize logs
           module(load="mmnormalize")
 
 __rsyslog_conf_viaq_formatting:
