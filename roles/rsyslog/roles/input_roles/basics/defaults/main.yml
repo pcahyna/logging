@@ -54,15 +54,13 @@ __rsyslog_conf_local_basics_modules:
                  SysSock.Use="off") # Turn off message reception via local log socket.
           {% endif %}
           # Read from journald
-          {% set done = "false" %}
           {% for input in logging_inputs %}
-          {%   if done == "false" and input.type == "basics" %}
+          {%   if loop.first and input.type == "basics" %}
           module(load="imjournal"
                  StateFile="{{ rsyslog_work_dir }}/imjournal.state"
                  RateLimit.Burst="{{ input.rsyslog_imjournal_ratelimit_burst | d(20000) }}"
                  RateLimit.Interval="{{ input.rsyslog_imjournal_ratelimit_interval | d(600) }}"
                  PersistStateInterval="{{ input.rsyslog_imjournal_persist_state_interval | d(10) }}")
-          {%     set done = "true" %}
           {%   endif %}
           {% endfor %}
           {% set ns = namespace(files_output = false) %}
