@@ -51,14 +51,8 @@ __rsyslog_conf_imfile_inputs:
           input(type="imfile" file="{{ input.rsyslog_input_log_path | d(rsyslog_input_log_path) }}" tag="{{ input.name }}")
           {%   endif %}
           {% endfor %}
-          {% set ns = namespace(files_output = false) %}
           {% set rsyslog_outputs = logging_outputs | d([]) %}
-          {% for output in rsyslog_outputs %}
-          {%   if output.type == "files" %}
-          {%     set ns.files_output = true %}
-          {%   endif %}
-          {% endfor %}
-          {% if not ns.files_output %}
+          {% if not rsyslog_outputs | selectattr("type", "==", "files") | list %}
           {%   set rsyslog_outputs = rsyslog_outputs + [{"name": "files", "type": "files"}] %}
           {% endif %}
           {% set indict = {} %}

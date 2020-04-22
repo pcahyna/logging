@@ -63,14 +63,8 @@ __rsyslog_conf_local_basics_modules:
                  PersistStateInterval="{{ input.rsyslog_imjournal_persist_state_interval | d(10) }}")
           {%   endif %}
           {% endfor %}
-          {% set ns = namespace(files_output = false) %}
           {% set rsyslog_outputs = logging_outputs | d([]) %}
-          {% for output in rsyslog_outputs %}
-          {%   if output.type == "files" %}
-          {%     set ns.files_output = true %}
-          {%   endif %}
-          {% endfor %}
-          {% if not ns.files_output %}
+          {% if not rsyslog_outputs | selectattr("type", "==", "files") | list %}
           {%   set rsyslog_outputs = rsyslog_outputs + [{"name": "files", "type": "files"}] %}
           {% endif %}
           {% set indict = {} %}
